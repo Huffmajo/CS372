@@ -5,6 +5,8 @@
 # Sources: https://media.oregonstate.edu/media/t/0_hh05nevl
 # https://docs.python.org/release/2.6.5/library/internet.html
 # https://beej.us/guide/bgnet/html/single/bgnet.html
+# https://www.tutorialspoint.com/python3/python_networking.htm
+# https://docs.python.org/3/howto/sockets.html
 ##########################################################
 
 from socket import *

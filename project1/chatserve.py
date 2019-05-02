@@ -28,7 +28,7 @@ def SendAndRecv(connectionSocket):
 		f"{clientUserName}> {recvMsg}"
 
 		# let user type message to send to client
-		print("Server> ")
+		print("Server> ", end = " ")
 		sendMsg = input()
 
 		# allow disconnection if quit command is used

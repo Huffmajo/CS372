@@ -29,13 +29,12 @@ void StdError(const char* string)
 
 /***********************************************************
  * Function: char* GetUserName()
- * Gets a user-choosen username. Ensures that it meets reqs
- * before returning the validated username.
+ * Gets a user-choosen username. Limit username to the first
+ * 10 characters entered if it's too long. Returns the string.
  ***********************************************************/
 char* GetUserName()
 {
 	char* username;
-
 	printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
 	scanf("%10s", username);	
 
@@ -104,7 +103,12 @@ int main(int argc, char* argv[])
 	int bufferSize = 1024;
 	char inputBuffer[bufferSize];
 	char outputBuffer[bufferSize];
-	
+
+	// initial handshake, share username
+	if (charsSent = send(socketFD, username, strlen(username), 0) < 0)
+	{
+		StdError("CLIENT: ERROR sending initial handshake\n");
+	}
 
 	while (1)
 	{
@@ -138,7 +142,9 @@ int main(int argc, char* argv[])
 		printf("Server> %s\n", outputBuffer);
 	}
 	
+	
 
 	// close socket
+	printf("Closing socket from client side\n");
 	close(socketFD);
 }

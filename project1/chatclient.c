@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
 
 		// let user type message to server
 		printf("%s> ", username);
-		scanf("%s", inputBuffer);
+		getline(&inputBuffer, &sizeof(inputBuffer), stdin);
 
 		// if escape message exit chat
 		if (strcmp(inputBuffer, "\\quit") == 0)

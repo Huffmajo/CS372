@@ -7,6 +7,7 @@
 # https://beej.us/guide/bgnet/html/single/bgnet.html
 # https://www.tutorialspoint.com/python3/python_networking.htm
 # https://docs.python.org/3/howto/sockets.html
+# https://docs.python.org/3.0/library/socket.html
 ##########################################################
 
 from socket import *
@@ -25,11 +26,11 @@ def SendAndRecv(connectionSocket):
 		recvMsg = connectionSocket.recv(1024)
 	
 		# print received message
-		f"{clientUserName}> {recvMsg}"
+		print("%s> %s" % (clientUserName.decode('utf-8'), recvMsg.decode('utf-8')))
 
 		# let user type message to send to client
-		print("Server> ", end = " ")
-		sendMsg = input()
+		# print("Server> ", end = " ")
+		sendMsg = input("Server> ")
 
 		# allow disconnection if quit command is used
 		if sendMsg == "\quit":
@@ -37,7 +38,7 @@ def SendAndRecv(connectionSocket):
 			break
 
 		# otherwise, send the message to client
-		connectionSocket.send(sendMsg)		
+		connectionSocket.send(sendMsg.encode('utf-8'))		
 	
 
 # main function
@@ -75,7 +76,7 @@ if __name__ == "__main__":
 	# keep connection open until ctrl + c interrupt
 	while 1:
 		connectionSocket, addr = serverSocket.accept()
-		f"Connected on {addr}"
+		print("Got a connection from %s" % str(addr))
 
 		SendAndRecv(connectionSocket)	
 

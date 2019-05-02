@@ -65,7 +65,7 @@ if __name__ == "__main__":
 	serverSocket = socket(AF_INET, SOCK_STREAM)
 
 	# bind socket to port number
-	serverSocket.bind((serverHost, int(serverPort)))
+	serverSocket.bind(('', int(serverPort)))
 
 	# listen at bound port for client
 	serverSocket.listen(1)

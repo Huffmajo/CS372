@@ -28,113 +28,33 @@ void StdError(const char* string)
 }
 
 /***********************************************************
- * Function: char* GetUserName()
- * Gets a user-choosen username. Ensures that it meets reqs
- * before returning the validated username.
+ * Function: void SetupConnection()
+ * Handles the socket creation and connection to the server.
+ * Sources: This function is mostly pulled from my CS344
+ * Porject 4 code with some modifications. URL to my private
+ * repo is listed in the program header. Access is available
+ * upon request.
  ***********************************************************/
-char* GetUserName()
+int SetupConnection(char* username, char* hostname, int portNumber)
 {
-	// get username from user
-	char* username = malloc(512 * sizeof(char));
-	int letterCount = 0;
-	int hasSpace = 0;
-
-	while (letterCount > 10 || letterCount < 1 || hasSpace)
-	{
-		// prompt user and get input
-		printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
-		fgets(username, sizeof(username), stdin);
-
-		// reset flags
-		int i = 0;
-		letterCount = 0;
-		hasSpace = 0;
-
-		// ensure username is right length and only one word
-		while (username[i] != '\n')
-		{
-			letterCount++;
-			if (username[i] == ' ')
-			{
-				hasSpace = 1;
-			}
-		}
-	}
-
-	// username is now valid
-
-	// remove trailing newline 
-	strtok(username, " \n");	
-
-	return username;
-}
-
-
-int main(int argc, char* argv[])
-{
-	int socketFD, portNumber;
+	int socketFD;
 	struct sockaddr_in serverAddress;
 	struct hostent* serverHostInfo;
 	
-
-	// greet user
-	printf("***Welcome to ChatClient***\n");
-
-	// throw error if wrong amount of arguments
-	if (argc != 3)
-	{
-		StdError("Specify address and port number with chatclient call.\n");
-	}
-
-
-	// get username from user
-	char username[512];
-	int letterCount = 0;
-	int hasSpace = 0;
-
-	while (letterCount > 10 || letterCount < 1 || hasSpace)
-	{
-		// prompt user and get input
-		printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
-		fgets(username, sizeof(username), stdin);
-
-		// reset flags
-		int i = 0;
-		letterCount = 0;
-		hasSpace = 0;
-
-		// ensure username is right length and only one word
-		while (username[i] != '\n')
-		{
-			letterCount++;
-			if (username[i] == ' ')
-			{
-				hasSpace = 1;
-			}
-			i++;
-		}
-	}
-
-	// username is now valid
-
-	// remove trailing newline 
-	strtok(username, " \n");	
-
-
-
 	// setup server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress));
-	
-	// assign submitted portnumber
-	portNumber = atoi(argv[2]);
 
 	// create network socket
 	serverAddress.sin_family = AF_INET;
 
+	// assign submitted portnumber
+	//portNumber = atoi(argv[2]);
+	//portNumber = atoi(portNum);
+
 	// store the port number
 	serverAddress.sin_port = htons(portNumber);	
 
-	serverHostInfo = gethostbyname(argv[1]);
+	serverHostInfo = gethostbyname(hostname);
 	if (serverHostInfo == NULL)
 	{
 		StdError("CLIENT: ERROR, no such host\n");
@@ -156,7 +76,22 @@ int main(int argc, char* argv[])
 		StdError("Could not contact server on selected port\n");
 	}
 
-	// MODULARIZE THIS LOOP
+	return socketFD;
+}
+
+/***********************************************************
+ * Function: void SendAndRecv(int socketFD, char* username)
+ * Manages all the sending and recieving of messages between
+ * client and server. Keeps conversation going until the
+ * connection is terminated by either side.
+ * Sources: This function is mostly pulled from my CS344 
+ * Project 4 code with some modifications. URL to my private 
+ * repo is listed in the program header. Access is available 
+ * upon request. 
+ ***********************************************************/
+void SendAndRecv(int socketFD, char* username)
+{
+	// declare some needed 
 	int  charsRead, charsSent;
 	int bufferSize = 512;
 	char inputBuffer[bufferSize];
@@ -193,9 +128,6 @@ int main(int argc, char* argv[])
 			StdError("CLIENT: ERROR sending data to server\n");
 		}
 
-		// ***TEST SEND MESSAGE VALIDATION***
-		//printf("*%s sent from client\n", inputBuffer);
-
 		// receive message from server
 		if (charsRead = recv(socketFD, outputBuffer, sizeof(outputBuffer), 0) < 0)
 		{
@@ -217,4 +149,53 @@ int main(int argc, char* argv[])
 
 	// close socket
 	close(socketFD);
+}
+
+int main(int argc, char* argv[])
+{
+	// greet user
+	printf("***Welcome to ChatClient***\n");
+
+	// throw error if wrong amount of arguments
+	if (argc != 3)
+	{
+		StdError("Specify address and port number with chatclient call.\n");
+	}
+
+	// get username from user
+	char username[512];
+	int letterCount = 0;
+	int hasSpace = 0;
+
+	while (letterCount > 10 || letterCount < 1 || hasSpace)
+	{
+		// prompt user and get input
+		printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
+		fgets(username, sizeof(username), stdin);
+
+		// reset flags
+		int i = 0;
+		letterCount = 0;
+		hasSpace = 0;
+
+		// ensure username is right length and only one word
+		while (username[i] != '\n')
+		{
+			letterCount++;
+			if (username[i] == ' ')
+			{
+				hasSpace = 1;
+			}
+			i++;
+		}
+	}
+
+	// remove trailing newline 
+	strtok(username, " \n");	
+
+	// create socket and connect to server	
+	int socketFD = SetupConnection(username, argv[1], atoi(argv[2]));
+
+	// send and receive messages with server
+	SendAndRecv(socketFD, username);
 }

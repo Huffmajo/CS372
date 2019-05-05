@@ -1,18 +1,18 @@
+#!/usr/bin/python3
 ##########################################################
 # Program: chatserve.py
 # Author: Joel Huffman
 # Last updated: 5/04/2019
-# Sources: https://media.oregonstate.edu/media/t/0_hh05nevl
+# Sources: https://media.oregonstate.edu/media/t/0_hh05nevl - Most of socket and connection setup
 # https://docs.python.org/release/2.6.5/library/internet.html
 # https://beej.us/guide/bgnet/html/single/bgnet.html
-# https://www.tutorialspoint.com/python3/python_networking.htm
-# https://docs.python.org/3/howto/sockets.html
+# https://www.tutorialspoint.com/python3/python_networking.htm - Great for translating to Python3
+# https://docs.python.org/3/howto/sockets.html - Very helpful for one-off issues switch Python2 to Python3
 ##########################################################
 
 from socket import *
 import sys
 
-# 
 def SendAndRecv(connectionSocket):
 
 	# get username from client

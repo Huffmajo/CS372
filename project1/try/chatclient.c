@@ -60,10 +60,10 @@ int main(int argc, char* argv[])
 	// get username from user
 	char username[10];
 	printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
-	scanf("%10s", username);	
+	scanf("%10s", username);
 
 	// ***TEST***
-	printf("Username: %s\n", username);
+	printf("*Username: %s\n", username);
 	
 	// setup server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress));
@@ -124,6 +124,8 @@ int main(int argc, char* argv[])
 		// if escape message exit chat
 		if (strcmp(inputBuffer, "\\quit") == 0)
 		{
+			send(socketFD, inputBuffer, strlen(inputBuffer), 0);
+			printf("Disconnecting from server\n");
 			break;
 		}
 
@@ -133,8 +135,8 @@ int main(int argc, char* argv[])
 			StdError("CLIENT: ERROR sending data to server\n");
 		}
 
-		// TEST SEND MESSAGE VALIDATION
-		printf("%s sent from client\n", inputBuffer);
+		// ***TEST SEND MESSAGE VALIDATION***
+		//printf("*%s sent from client\n", inputBuffer);
 
 		// receive message from server
 		if (charsRead = recv(socketFD, outputBuffer, sizeof(outputBuffer), 0) < 0)
@@ -142,10 +144,18 @@ int main(int argc, char* argv[])
 			StdError("CLIENT: ERROR receiving data from server\n");			
 		}
 
+		// if quit command received, close connection and exit loop
+		if (strcmp(outputBuffer, "\\quit") == 0)
+		{
+			printf("***Server has terminated connection***\n");
+			break;
+		}
+
 		// print received message from server
 		printf("Server> %s\n", outputBuffer);
 	}
-	
+
+	printf("Now exiting chatclient\n");
 
 	// close socket
 	close(socketFD);

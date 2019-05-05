@@ -1,7 +1,7 @@
 /*********************************************************
  * Program: chatclient.c
  * Author: Joel Huffman
- * Last updated: 4/30/2019
+ * Last updated: 5/04/2019
  * Sources: https://media.oregonstate.edu/media/t/0_hh05nevl
  * https://beej.us/guide/bgnet/html/single/bgnet.html
  * https://github.com/Huffmajo/CS344/tree/master/program4
@@ -44,9 +44,13 @@ char* GetUserName()
 
 int main(int argc, char* argv[])
 {
-	int socketFD, portNumber;
+	int socketFD, portNumber, charsRead, charsSent;
 	struct sockaddr_in serverAddress;
 	struct hostent* serverHostInfo;
+	int bufferSize = 512;
+	char inputBuffer[bufferSize];
+	char outputBuffer[bufferSize];
+	
 
 	// greet user
 	printf("***Welcome to ChatClient***\n");
@@ -60,11 +64,11 @@ int main(int argc, char* argv[])
 	// get username from user
 	char username[10];
 	printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
-	scanf("%10s", username);
+	fgets(username, sizeof(username), stdin);
 
-	// ***TEST***
-	printf("*Username: %s\n", username);
-	
+	// remove trailing newline or space
+	strtok(username, " \n");
+
 	// setup server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress));
 	
@@ -99,12 +103,6 @@ int main(int argc, char* argv[])
 		StdError("Could not contact server on selected port\n");
 	}
 
-	// actual chat messages
-	int charsRead, charsSent;
-	int bufferSize = 512;
-	char inputBuffer[bufferSize];
-	char outputBuffer[bufferSize];
-	
 	// send username as initial handshake, throw error if something goes wrong
 	if (charsSent = send(socketFD, username, strlen(username), 0) < 0)
 	{
@@ -119,7 +117,8 @@ int main(int argc, char* argv[])
 
 		// let user type message to server
 		printf("%s> ", username);
-		scanf("%s", inputBuffer);
+		fgets(inputBuffer, sizeof(inputBuffer), stdin);
+		strtok(inputBuffer, "\n");
 
 		// if escape message exit chat
 		if (strcmp(inputBuffer, "\\quit") == 0)

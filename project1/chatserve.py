@@ -1,40 +1,48 @@
+#!/usr/bin/python3
 ##########################################################
 # Program: chatserve.py
 # Author: Joel Huffman
-# Last updated: 4/30/2019
-# Sources: https://media.oregonstate.edu/media/t/0_hh05nevl
+# Last updated: 5/04/2019
+# Sources: https://media.oregonstate.edu/media/t/0_hh05nevl - Most of socket and connection setup
 # https://docs.python.org/release/2.6.5/library/internet.html
 # https://beej.us/guide/bgnet/html/single/bgnet.html
-# https://www.tutorialspoint.com/python3/python_networking.htm
-# https://docs.python.org/3/howto/sockets.html
-# https://docs.python.org/3.0/library/socket.html
+# https://www.tutorialspoint.com/python3/python_networking.htm - Great for translating to Python3
+# https://docs.python.org/3/howto/sockets.html - Very helpful for one-off issues switch Python2 to Python3
 ##########################################################
 
 from socket import *
 import sys
 
-# 
 def SendAndRecv(connectionSocket):
 
 	# get username from client
-	clientUserName = connectionSocket.recv(1024)
+	clientUserName = connectionSocket.recv(512)
 	
+	# alert that client is connected
+	print("%s has connected" % clientUserName.decode())
+
 	# take turns receiving and sending ad infinitum
 	while 1:
 
 		# get message from client
-		recvMsg = connectionSocket.recv(1024)
+		recvMsg = connectionSocket.recv(512)
+
+		# check for client disconnection
+		if recvMsg.decode() == "\quit":
+			print("***%s has disconnected***" % clientUserName.decode())
+			break
 	
 		# print received message
-		print("%s> %s" % (clientUserName.decode('utf-8'), recvMsg.decode('utf-8')))
+		print("%s> %s" % (clientUserName.decode(), recvMsg.decode()))
 
 		# let user type message to send to client
-		# print("Server> ", end = " ")
+		# print("Server> ", end='')
 		sendMsg = input("Server> ")
 
 		# allow disconnection if quit command is used
 		if sendMsg == "\quit":
-			print("Connection closed")
+			print("Disconnecting from client")
+			connectionSocket.send(sendMsg.encode('utf-8'))		
 			break
 
 		# otherwise, send the message to client
@@ -43,6 +51,7 @@ def SendAndRecv(connectionSocket):
 
 # main function
 if __name__ == "__main__":
+
 	# greet user
 	print ("***Welcome to ChatServe***")
 
@@ -76,8 +85,10 @@ if __name__ == "__main__":
 	# keep connection open until ctrl + c interrupt
 	while 1:
 		connectionSocket, addr = serverSocket.accept()
-		print("Got a connection from %s" % str(addr))
+		print("Connected to %s" % str(addr))
 
 		SendAndRecv(connectionSocket)	
+
+		print("Connect another client or ctrl+c to exit")
 
 		connectionSocket.close()

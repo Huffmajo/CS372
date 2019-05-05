@@ -34,22 +34,47 @@ void StdError(const char* string)
  ***********************************************************/
 char* GetUserName()
 {
-	char* username;
+	// get username from user
+	char* username = malloc(512 * sizeof(char));
+	int letterCount = 0;
+	int hasSpace = 0;
 
-	printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
-	scanf("%10s", username);	
+	while (letterCount > 10 || letterCount < 1 || hasSpace)
+	{
+		// prompt user and get input
+		printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
+		fgets(username, sizeof(username), stdin);
+
+		// reset flags
+		int i = 0;
+		letterCount = 0;
+		hasSpace = 0;
+
+		// ensure username is right length and only one word
+		while (username[i] != '\n')
+		{
+			letterCount++;
+			if (username[i] == ' ')
+			{
+				hasSpace = 1;
+			}
+		}
+	}
+
+	// username is now valid
+
+	// remove trailing newline 
+	strtok(username, " \n");	
 
 	return username;
 }
 
+
 int main(int argc, char* argv[])
 {
-	int socketFD, portNumber, charsRead, charsSent;
+	int socketFD, portNumber;
 	struct sockaddr_in serverAddress;
 	struct hostent* serverHostInfo;
-	int bufferSize = 512;
-	char inputBuffer[bufferSize];
-	char outputBuffer[bufferSize];
 	
 
 	// greet user
@@ -61,13 +86,41 @@ int main(int argc, char* argv[])
 		StdError("Specify address and port number with chatclient call.\n");
 	}
 
-	// get username from user
-	char username[10];
-	printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
-	fgets(username, sizeof(username), stdin);
 
-	// remove trailing newline or space
-	strtok(username, " \n");
+	// get username from user
+	char username[512];
+	int letterCount = 0;
+	int hasSpace = 0;
+
+	while (letterCount > 10 || letterCount < 1 || hasSpace)
+	{
+		// prompt user and get input
+		printf("Enter your username. It must be one word and have a maximum of 10 characters\n");
+		fgets(username, sizeof(username), stdin);
+
+		// reset flags
+		int i = 0;
+		letterCount = 0;
+		hasSpace = 0;
+
+		// ensure username is right length and only one word
+		while (username[i] != '\n')
+		{
+			letterCount++;
+			if (username[i] == ' ')
+			{
+				hasSpace = 1;
+			}
+			i++;
+		}
+	}
+
+	// username is now valid
+
+	// remove trailing newline 
+	strtok(username, " \n");	
+
+
 
 	// setup server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress));
@@ -102,6 +155,12 @@ int main(int argc, char* argv[])
 	{
 		StdError("Could not contact server on selected port\n");
 	}
+
+	// MODULARIZE THIS LOOP
+	int  charsRead, charsSent;
+	int bufferSize = 512;
+	char inputBuffer[bufferSize];
+	char outputBuffer[bufferSize];
 
 	// send username as initial handshake, throw error if something goes wrong
 	if (charsSent = send(socketFD, username, strlen(username), 0) < 0)

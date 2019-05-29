@@ -5,6 +5,7 @@
  * Sources:
  * https://github.com/Huffmajo/CS344/tree/master/program4 *private repo, access available upon request
  * https://github.com/Huffmajo/CS372/tree/master/project1 *private repo, access available upon request
+ * https://stackoverflow.com/questions/4204666/how-to-list-files-in-a-directory-in-a-c-program
  *********************************************************/
 
 #include <stdio.h>
@@ -14,6 +15,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <dirent.h>
 
 /***********************************************************
  * Function: StdError(err)
@@ -68,9 +70,105 @@ int serverSetup(int portNum)
 	return listenSocketFD;
 }
 
+/***********************************************************
+ * Function: receiveData(socket, buffer)
+ * Accepts an int as a socket. Reads sent data from socket 
+ * to a buffer. Then returns that buffer.
+ ***********************************************************/
+char* receiveData(int socket)
+{
+	char buffer[150000];
+	memset(buffer, '\0', sizeof(buffer));
+
+	// read data from socket to buffer
+	int charsRead = recv(socket, &buffer, sizeof(buffer), 0);
+
+	if (charsRead < 0)
+	{
+		fprintf(stderr, "ERROR receiving data on %d\n", socket);
+	}
+
+	return buffer;
+}
+
+/***********************************************************
+ * Function: sendData(socket, buffer)
+ * Accepts an int and a string. Sends data in buffer to 
+ * provided socket.
+ ***********************************************************/
+void sendData(int socket, char* buffer)
+{
+	int charsSent = send(socket, buffer, strlen(buffer), 0);
+
+	if (charsSent < 0)
+	{
+		fprintf(stderr, "ERROR sending data on %d\n, socket);
+	}
+}
+
+/***********************************************************
+ * Function: getDirListing()
+ * Gets directory listing of current working directory and 
+ * returns it in string form.
+ ***********************************************************/
+char* getDirListing()
+{
+	char buffer[150000];
+	memset(buffer, '\0', sizeof(buffer));
+
+	DIR* d;
+	struct dirent* dir;
+	d = opendir(".");
+	if (d) {
+		while ((dir = readdir(d)) != NULL) 
+		{
+			strcat(buffer, d->d_name);
+			strcat(buffer, "\t");
+		}
+
+		closedir(d);
+	}
+	return buffer;	
+}
+
+/***********************************************************
+ * Function: sendFile(socket, filename)
+ * Accepts an int and a string. Reads content of filename 
+ * and sends those contents to client through provided 
+ * socket. If file doesn't exist, "File not found" is sent to
+ * client.
+ ***********************************************************/
+void sendFile(int socket, char* filename)
+{
+	char buffer[150000];
+	memset(buffer, '\0', sizeof(buffer));
+
+	File* fp;
+
+	// attempt to open file 
+	fp = fopen(filename, "r");
+
+	// let client know if file does not exist
+	if (fp == NULL)
+	{
+		strcpy(buffer, "File not found\n");
+	}
+
+	// otherwise read and send file contents
+	else
+	{
+		fgets(buffer, sizeof(buffer), fp);
+	}
+
+	fclose(fp);
+
+	sendData(socket, buffer);
+}
+
 int main(int argc, char* argv[])
 {
 	int serverSocket;
+	int clientSocket;
 	pid_t pid;
 	sockaddr_in clientAddress;
 	socklen_t sizeOfClientInfo;
@@ -96,11 +194,11 @@ int main(int argc, char* argv[])
 		sizeOfClientInfo = sizeof(clientAddress);
 
 		// establish connection
-		establishedConnectionFD = accept(socketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo)
+		establishedConnectionFD = accept(serverSocket, (struct sockaddr *)&clientAddress, &sizeOfClientInfo)
 		if (establishedConnectionFD < 0)
 		{
 			// print error, but don't exit
-			fprintf(stderr, "ERROR on accept\n");
+			fprintf(stderr, "ERROR on control accept\n");
 		}
 
 		// fork off child process for connection
@@ -115,14 +213,47 @@ int main(int argc, char* argv[])
 		// child process
 		else if (pid == 0)
 		{
+			// get TCP data portNum
+			int dataPortNum = atoi(receiveData(establishedConnectionPD));
 
+			// get command from client
+			char[150000] command = receiveData(establishedConnectionPD));
+
+			// NEED TO DOUBLE CHECK STRTOK PART******************
+			char* token;
+			token = strtok(command, " ");
+			strcpy(commandPrefix, token);
+
+			// let user know if command is invalid
+			if (strcmp(commandPrefix, "-l") != 0 && strcmp(commandPrefix, "-g") != 0)
+			{
+				sendData(establsihedConnectionPD, "Invalid command\n");
+			}
+
+			else
+			{
+				// form TCP data connection with client	
+				clientSocket = setupServer(atoi(dataPortNum));
+				int establishedDataConnectionFD = accept(clientSocket, (struct sockaddr *)&clientAddress, &sizeOfClientInfo)
+
+				if (establishedDataConnectionFD < 0)
+				{
+					// print error, but don't exit
+					fprintf(stderr, "ERROR on data accept\n");
+				}
+
+				// do command
+
+			}
 		}
 
 		// parent process
 		else 
 		{
-			// close socket to client
-			close(establishedConnectionFD); 			
+			// nothing needed here
 		}
+
+		// close data connection
+		
 	}
 }

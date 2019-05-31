@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -18,11 +19,11 @@
 #include <dirent.h>
 
 /***********************************************************
- * Function: StdError(err)
+ * Function: stderror(err)
  * Accepts a string. Sends that string to standard error and
  * exits with value 1.
  ***********************************************************/
-void StdError(const char* string) 
+void stderror(const char* string) 
 { 
 	fprintf(stderr, string); 
 	exit(1); 
@@ -75,9 +76,9 @@ int serverSetup(int portNum)
  * Accepts an int as a socket. Reads sent data from socket 
  * to a buffer. Then returns that buffer.
  ***********************************************************/
-char* receiveData(int socket)
+void receiveData(int socket, char* buffer)
 {
-	char buffer[150000];
+//	char buffer[150000];
 	memset(buffer, '\0', sizeof(buffer));
 
 	// read data from socket to buffer
@@ -87,8 +88,6 @@ char* receiveData(int socket)
 	{
 		fprintf(stderr, "ERROR receiving data on %d\n", socket);
 	}
-
-	return buffer;
 }
 
 /***********************************************************
@@ -102,33 +101,31 @@ void sendData(int socket, char* buffer)
 
 	if (charsSent < 0)
 	{
-		fprintf(stderr, "ERROR sending data on %d\n, socket);
+		fprintf(stderr, "ERROR sending data on %d\n", socket);
 	}
 }
 
 /***********************************************************
- * Function: getDirListing()
+ * Function: getDirListing(buffer)
  * Gets directory listing of current working directory and 
  * returns it in string form.
  ***********************************************************/
-char* getDirListing()
+char* getDirListing(char* buffer)
 {
-	char buffer[150000];
 	memset(buffer, '\0', sizeof(buffer));
 
-	DIR* d;
 	struct dirent* dir;
+	DIR* d;
 	d = opendir(".");
 	if (d) {
 		while ((dir = readdir(d)) != NULL) 
 		{
-			strcat(buffer, d->d_name);
-			strcat(buffer, "\t");
+			strcat(buffer, dir->d_name);
+			strcat(buffer, "\n");
 		}
 
-		closedir(d);
 	}
-	return buffer;	
+	closedir(d);
 }
 
 /***********************************************************
@@ -143,7 +140,7 @@ void sendFile(int socket, char* filename)
 	char buffer[150000];
 	memset(buffer, '\0', sizeof(buffer));
 
-	File* fp;
+	FILE* fp;
 
 	// attempt to open file 
 	fp = fopen(filename, "r");
@@ -183,14 +180,14 @@ int main(int argc, char* argv[])
 	// throw error if wrong amount of arguments
 	if (argc != 2)
 	{
-		StdError("Specify port number with ftserver call.\n");
+		stderror("Specify port number with ftserver call.\n");
 	}
 
 	// create/setup server socket
-	serverSocket = setupServer(atoi(argv[1]));
+	serverSocket = serverSetup(atoi(argv[1]));
 
 	// print confirmation of server setup
-	printf("Server open on port %d"\n, atoi(argv[1]));
+	printf("Server open on port %d\n", atoi(argv[1]));
 
 	// keep server listening until CTRL+C
 	while(1)
@@ -199,7 +196,7 @@ int main(int argc, char* argv[])
 		sizeOfClientInfo = sizeof(clientAddress);
 
 		// establish connection
-		establishedConnectionFD = accept(serverSocket, (struct sockaddr *)&clientAddress, &sizeOfClientInfo)
+		int establishedConnectionFD = accept(serverSocket, (struct sockaddr *)&clientAddress, &sizeOfClientInfo);
 		if (establishedConnectionFD < 0)
 		{
 			// print error, but don't exit
@@ -219,28 +216,34 @@ int main(int argc, char* argv[])
 		else if (pid == 0)
 		{
 			// get TCP data portNum
-			int dataPortNum = atoi(receiveData(establishedConnectionPD));
+			receiveData(establishedConnectionFD, buffer);
+			int dataPortNum = atoi(buffer);
 
 			// get client host
-			char* clientHost = receiveData(establishedConnectionPD);
+			receiveData(establishedConnectionFD, buffer);
+			char* clientHost;
+			strcpy(clientHost, buffer);
 
 			// get command from client
-			command = receiveData(establishedConnectionPD));
+			receiveData(establishedConnectionFD, buffer);
+			strcpy(command, buffer);
 
 			// get filename from client
-			filename = receiveData(establishedConnectionPD));
+			receiveData(establishedConnectionFD, buffer);
+			strcpy(filename, buffer);
 
 			// let user know if command is invalid
-			if (strcmp(commandPrefix, "-l") != 0 && strcmp(commandPrefix, "-g") != 0)
+			if (strcmp(command, "-l") != 0 && strcmp(command, "-g") != 0)
 			{
-				sendData(establsihedConnectionPD, "Invalid command\n");
+				char msg[] = "Invalid command\n";
+				sendData(establishedConnectionFD, msg);
 			}
 
 			else
 			{
 				// form TCP data connection with client	
-				clientSocket = setupServer(atoi(dataPortNum));
-				int establishedDataConnectionFD = accept(clientSocket, (struct sockaddr *)&clientAddress, &sizeOfClientInfo)
+				clientSocket = serverSetup(dataPortNum);
+				int establishedDataConnectionFD = accept(clientSocket, (struct sockaddr *)&clientAddress, &sizeOfClientInfo);
 
 				if (establishedDataConnectionFD < 0)
 				{
@@ -252,17 +255,17 @@ int main(int argc, char* argv[])
 				printf("Connection from %s\n", clientHost);
 
 				// send directory listing if properly requested
-				if (strcmp(commandPrefix, "-l") == 0)
+				if (strcmp(command, "-l") == 0)
 				{
 					// get current directory listing
-					buffer = getDirListing();
+					getDirListing(buffer);
 
 					// send to client
-					sendData(EstablishedDataConnectionFD, buffer);
+					sendData(establishedDataConnectionFD, buffer);
 				}
 
 				// send file if properly requested
-				else if (strcmp(commandPrefix, "-g") == 0)
+				else if (strcmp(command, "-g") == 0)
 				{
 					// send file contents or message if file is not found
 					sendFile(establishedDataConnectionFD, filename); 

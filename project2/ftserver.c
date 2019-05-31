@@ -1,7 +1,7 @@
 /*********************************************************
  * Program: ftserver.c
  * Author: Joel Huffman
- * Last updated: 5/27/2019
+ * Last updated: 5/30/2019
  * Sources:
  * https://github.com/Huffmajo/CS344/tree/master/program4 *private repo, access available upon request
  * https://github.com/Huffmajo/CS372/tree/master/project1 *private repo, access available upon request
@@ -174,6 +174,8 @@ int main(int argc, char* argv[])
 	socklen_t sizeOfClientInfo;
 	int bufferSize = 150000;
 	char buffer[bufferSize];
+	char* command;
+	char* filename;
 
 	// greet user
 	printf("***Welcome to File Transfer Server***\n");
@@ -186,6 +188,9 @@ int main(int argc, char* argv[])
 
 	// create/setup server socket
 	serverSocket = setupServer(atoi(argv[1]));
+
+	// print confirmation of server setup
+	printf("Server open on port %d"\n, atoi(argv[1]));
 
 	// keep server listening until CTRL+C
 	while(1)
@@ -216,13 +221,14 @@ int main(int argc, char* argv[])
 			// get TCP data portNum
 			int dataPortNum = atoi(receiveData(establishedConnectionPD));
 
-			// get command from client
-			char[150000] command = receiveData(establishedConnectionPD));
+			// get client host
+			char* clientHost = receiveData(establishedConnectionPD);
 
-			// NEED TO DOUBLE CHECK STRTOK PART******************
-			char* token;
-			token = strtok(command, " ");
-			strcpy(commandPrefix, token);
+			// get command from client
+			command = receiveData(establishedConnectionPD));
+
+			// get filename from client
+			filename = receiveData(establishedConnectionPD));
 
 			// let user know if command is invalid
 			if (strcmp(commandPrefix, "-l") != 0 && strcmp(commandPrefix, "-g") != 0)
@@ -242,8 +248,28 @@ int main(int argc, char* argv[])
 					fprintf(stderr, "ERROR on data accept\n");
 				}
 
-				// do command
+				// print confirmation of server setup
+				printf("Connection from %s\n", clientHost);
 
+				// send directory listing if properly requested
+				if (strcmp(commandPrefix, "-l") == 0)
+				{
+					// get current directory listing
+					buffer = getDirListing();
+
+					// send to client
+					sendData(EstablishedDataConnectionFD, buffer);
+				}
+
+				// send file if properly requested
+				else if (strcmp(commandPrefix, "-g") == 0)
+				{
+					// send file contents or message if file is not found
+					sendFile(establishedDataConnectionFD, filename); 
+				}
+			
+				//close data connection
+				close(establishedDataConnectionFD);
 			}
 		}
 

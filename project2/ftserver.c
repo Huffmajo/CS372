@@ -57,8 +57,8 @@ int serverSetup(int portNum)
 	}
 
 	// can re-use ports 
-	optval = 1;
-	setsockopt(listenSocketFD, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int));
+//	optval = 1;
+//	setsockopt(listenSocketFD, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int));
 
 	// Enable the socket to begin listening
 	if (bind(listenSocketFD, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to port
@@ -88,6 +88,7 @@ void receiveData(int socket, char* buffer)
 	{
 		fprintf(stderr, "ERROR receiving data on %d\n", socket);
 	}
+	printf("Received %s\n", buffer);
 }
 
 /***********************************************************
@@ -103,6 +104,8 @@ void sendData(int socket, char* buffer)
 	{
 		fprintf(stderr, "ERROR sending data on %d\n", socket);
 	}
+
+	printf("Sent %d\n", buffer);
 }
 
 /***********************************************************
@@ -166,6 +169,7 @@ int main(int argc, char* argv[])
 {
 	int serverSocket;
 	int clientSocket;
+	int clientPortNum;
 	pid_t pid;
 	sockaddr_in clientAddress;
 	socklen_t sizeOfClientInfo;
@@ -183,25 +187,32 @@ int main(int argc, char* argv[])
 		stderror("Specify port number with ftserver call.\n");
 	}
 
+	// get port number from arguments
+	clientPortNum = atoi(argv[1]);
+
 	// create/setup server socket
-	serverSocket = serverSetup(atoi(argv[1]));
+	serverSocket = serverSetup(clientPortNum);
 
 	// print confirmation of server setup
-	printf("Server open on port %d\n", atoi(argv[1]));
+	printf("Server open on port %d\n", clientPortNum);
 
 	// keep server listening until CTRL+C
 	while(1)
 	{
+		printf("Waiting for client to connect\n");
+
 		// get size of the address for the connecting client
 		sizeOfClientInfo = sizeof(clientAddress);
 
 		// establish connection
-		int establishedConnectionFD = accept(serverSocket, (struct sockaddr *)&clientAddress, &sizeOfClientInfo);
+		int establishedConnectionFD = accept(serverSocket, NULL, NULL);
 		if (establishedConnectionFD < 0)
 		{
 			// print error, but don't exit
 			fprintf(stderr, "ERROR on control accept\n");
 		}
+
+		printf("client connected on %d\n", clientPortNum);
 
 		// fork off child process for connection
 		pid = fork();
@@ -210,11 +221,14 @@ int main(int argc, char* argv[])
 		if (pid == -1)
 		{
 			fprintf(stderr, "Fork error\n");
+			printf("FORK ERROR\n");
 		}
 
 		// child process
 		else if (pid == 0)
 		{
+			printf("Into child process\n");
+
 			// get TCP data portNum
 			receiveData(establishedConnectionFD, buffer);
 			int dataPortNum = atoi(buffer);
@@ -232,18 +246,27 @@ int main(int argc, char* argv[])
 			receiveData(establishedConnectionFD, buffer);
 			strcpy(filename, buffer);
 
+			// TEST PRINTS
+			printf("dataPort: %d\nclientHost: %s\ncommand: %s\nfilename: %s\n", dataPortNum, clientHost, command, filename);
+
 			// let user know if command is invalid
 			if (strcmp(command, "-l") != 0 && strcmp(command, "-g") != 0)
 			{
-				char msg[] = "Invalid command\n";
-				sendData(establishedConnectionFD, msg);
+//				strcpy(buffer, "Invalid command");
+//				sendData(establishedConnectionFD, buffer);
 			}
 
 			else
 			{
+				// send valid command message
+//				strcpy(buffer, "Valid command");
+//				sendData(establishedConnectionFD, buffer);				
+
+				printf("dataport %d", dataPortNum);
+
 				// form TCP data connection with client	
 				clientSocket = serverSetup(dataPortNum);
-				int establishedDataConnectionFD = accept(clientSocket, (struct sockaddr *)&clientAddress, &sizeOfClientInfo);
+				int establishedDataConnectionFD = accept(clientSocket, NULL, NULL);
 
 				if (establishedDataConnectionFD < 0)
 				{

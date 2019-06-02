@@ -28,15 +28,15 @@ def setupClient(host, portNum):
 def send(socket, msg):
 	msg = str(msg)
 #	msg = msg.encode('utf-8')
-	socket.send(msg.encode('utf-8'))
+	socket.send(msg.encode())
 	print("Sent %s" % msg)
 
 
 # receive and decode data
-def receive(socket):
-	msg = socket.recv(150000)
+def receive(socket, size):
+	msg = socket.recv(size)
 	msg = msg.decode()
-	print("Received message from server")
+	print("Received %s" % msg)
 	return msg
 
 # main function
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 		exit(1)
 
 	# get the submitted arguments
-	serverHost = sys.argv[1]
+	serverHost = sys.argv[1] + ".engr.oregonstate.edu"
 	serverPortNum = int(sys.argv[2])
 	command = sys.argv[3]
 
@@ -70,14 +70,16 @@ if __name__ == "__main__":
 	
 	# otherwise tell user to it's an invalid command
 	else:
+		filename = ""
+		dataPortNum = ""
 		commandResponse = "Valid command"
 
 	# TEST PRINTS
-#	print("Server host: %s" % serverHost)
-#	print("Server port #: %s" % serverPortNum)
-#	print("Command: %s" % command)
-#	print("Data port #: %s" % dataPortNum)
-#	print("Filename: %s" % filename)
+	print("Server host: %s" % serverHost)
+	print("Server port #: %s" % serverPortNum)
+	print("Command: %s" % command)
+	print("Data port #: %s" % dataPortNum)
+	print("Filename: %s" % filename)
 
 	# connect to server
 	connectionSocket = setupClient(serverHost, serverPortNum);
@@ -85,18 +87,30 @@ if __name__ == "__main__":
 	# send data port number
 	send(connectionSocket, dataPortNum)
 
+	# needed for pythons stream-style sending
+	garbage = receive(connectionSocket, 10)
+
 	# send client host
 	clientHost = gethostname()
 	send(connectionSocket, clientHost)
 
+	# needed for pythons stream-style sending
+	garbage = receive(connectionSocket, 10)
+
 	# send command
 	send(connectionSocket, command)
+
+	# needed for pythons stream-style sending
+	garbage = receive(connectionSocket, 10)
 
 	# send filename
 	send(connectionSocket, filename)
 
 	# receive if server accepts command
-#	commandResponse = receive(connectionSocket)
+	commandResponse = receive(connectionSocket, 1000)
+
+	# needed for pythons stream-style sending
+	send (connectionSocket, garbage)
 
 	# continue with function if command is deemed valid
 	if commandResponse == "Valid command":
@@ -107,7 +121,7 @@ if __name__ == "__main__":
 
 		# receive command response
 		# **NEED TO DO THIS OVER THE DATA CONNECTION**
-		response = receive(dataSocket)
+		response = receive(dataSocket, 50000)
 
 		if response == "File not found":
 			print("%s:%s says FILE NOT FOUND" % (serverHost, str(dataPortNum)))
@@ -116,11 +130,11 @@ if __name__ == "__main__":
 			print(response)
 		elif command == "-g":
 			print("File transfer complete")
+		dataSocket.close()
 
 	# otherwise, close sockets
 	else:
 		print("Invalid command: %s. Valid commands are -l and -g." % command)
 
 	# close both connections
-	dataSocket.close()
 	connectionSocket.close()

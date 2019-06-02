@@ -78,11 +78,11 @@ int serverSetup(int portNum)
  ***********************************************************/
 void receiveData(int socket, char* buffer)
 {
-//	char buffer[150000];
 	memset(buffer, '\0', sizeof(buffer));
 
 	// read data from socket to buffer
-	int charsRead = recv(socket, &buffer, sizeof(buffer), 0);
+	int charsRead;
+	charsRead = recv(socket, buffer, 50000, 0);
 
 	if (charsRead < 0)
 	{
@@ -96,16 +96,16 @@ void receiveData(int socket, char* buffer)
  * Accepts an int and a string. Sends data in buffer to 
  * provided socket.
  ***********************************************************/
-void sendData(int socket, char* buffer)
+void sendData(int socket, char* output)
 {
-	int charsSent = send(socket, buffer, strlen(buffer), 0);
+	int charsSent = send(socket, output, strlen(output), 0);
 
 	if (charsSent < 0)
 	{
 		fprintf(stderr, "ERROR sending data on %d\n", socket);
 	}
 
-	printf("Sent %d\n", buffer);
+	printf("Sent %d\n", output);
 }
 
 /***********************************************************
@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
 	pid_t pid;
 	sockaddr_in clientAddress;
 	socklen_t sizeOfClientInfo;
-	int bufferSize = 150000;
+	int bufferSize = 50000;
 	char buffer[bufferSize];
 	char* command;
 	char* filename;
@@ -227,20 +227,31 @@ int main(int argc, char* argv[])
 		// child process
 		else if (pid == 0)
 		{
-			printf("Into child process\n");
+			printf("In child process\n");
+
+			char garbage[] = "*********";
 
 			// get TCP data portNum
 			receiveData(establishedConnectionFD, buffer);
 			int dataPortNum = atoi(buffer);
+
+			// needed for pythons stream-style sending
+			sendData(establishedConnectionFD, garbage);
 
 			// get client host
 			receiveData(establishedConnectionFD, buffer);
 			char* clientHost;
 			strcpy(clientHost, buffer);
 
+			// needed for pythons stream-style sending
+			sendData(establishedConnectionFD, garbage);
+
 			// get command from client
 			receiveData(establishedConnectionFD, buffer);
 			strcpy(command, buffer);
+
+			// needed for pythons stream-style sending
+			sendData(establishedConnectionFD, garbage);
 
 			// get filename from client
 			receiveData(establishedConnectionFD, buffer);
@@ -248,21 +259,24 @@ int main(int argc, char* argv[])
 
 			// TEST PRINTS
 			printf("dataPort: %d\nclientHost: %s\ncommand: %s\nfilename: %s\n", dataPortNum, clientHost, command, filename);
-
 			// let user know if command is invalid
 			if (strcmp(command, "-l") != 0 && strcmp(command, "-g") != 0)
 			{
-//				strcpy(buffer, "Invalid command");
-//				sendData(establishedConnectionFD, buffer);
+				strcpy(buffer, "Invalid command");
+				sendData(establishedConnectionFD, buffer);
+
+				// needed for pythons stream-style sending
+				receiveData(establishedConnectionFD, buffer);
 			}
 
 			else
 			{
 				// send valid command message
-//				strcpy(buffer, "Valid command");
-//				sendData(establishedConnectionFD, buffer);				
+				strcpy(buffer, "Valid command");
+				sendData(establishedConnectionFD, buffer);				
 
-				printf("dataport %d", dataPortNum);
+				// needed for pythons stream-style sending
+				receiveData(establishedConnectionFD, buffer);
 
 				// form TCP data connection with client	
 				clientSocket = serverSetup(dataPortNum);
@@ -305,7 +319,7 @@ int main(int argc, char* argv[])
 			// nothing needed here
 		}
 
-		// close data connection
-		
+		// close connection
+		close(establishedConnectionFD);
 	}
 }

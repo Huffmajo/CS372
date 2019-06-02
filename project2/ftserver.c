@@ -225,16 +225,11 @@ int main(int argc, char* argv[])
 	serverSocket = serverSetup(clientPortNum);
 
 	// print confirmation of server setup
-	printf("Server open on port %d\n", clientPortNum);
+	printf("Server open on %d\n", clientPortNum);
 
 	// keep server listening until CTRL+C
 	while(1)
 	{
-		printf("Waiting for client to connect\n");
-
-		// get size of the address for the connecting client
-		sizeOfClientInfo = sizeof(clientAddress);
-
 		// establish connection
 		int establishedConnectionFD = accept(serverSocket, NULL, NULL);
 		if (establishedConnectionFD < 0)
@@ -242,8 +237,6 @@ int main(int argc, char* argv[])
 			// print error, but don't exit
 			fprintf(stderr, "ERROR on control accept\n");
 		}
-
-		printf("client connected on %d\n", clientPortNum);
 
 		// fork off child process for connection
 		pid = fork();
@@ -271,6 +264,9 @@ int main(int argc, char* argv[])
 			// split up data at delimiters
 			dataPortNum = parseMessage(buffer, clientHost, command, filename);
 
+			// print client's hostname
+			printf("Connection from %s\n", clientHost);
+
 			// TEST PRINTS
 			printf("dataPort: %d\nclientHost: %s\ncommand: %s\nfilename: %s\n", dataPortNum, clientHost, command, filename);
 
@@ -280,9 +276,6 @@ int main(int argc, char* argv[])
 				// send valid command message
 				strcpy(buffer, "Valid command");
 				sendData(establishedConnectionFD, buffer);				
-
-				// needed for pythons stream-style sending
-				receiveData(establishedConnectionFD, buffer);
 
 				// form TCP data connection with client	
 				clientSocket = serverSetup(dataPortNum);

@@ -90,14 +90,14 @@ if __name__ == "__main__":
 	# send condesnsed client info
 	send(connectionSocket, message)
 
-	time.sleep(1)
+	time.sleep(.5)
 
 	# receive if server accepts command
 	commandResponse = receive(connectionSocket, 50001)
 
 	# continue with function if command is deemed valid
 	if commandResponse == "Valid command":
-		time.sleep(.1)
+		time.sleep(.5)
 
 		# connect to server for data communication
 		dataSocket = setupClient(serverHost, dataPortNum)

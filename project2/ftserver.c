@@ -1,7 +1,7 @@
 /*********************************************************
  * Program: ftserver.c
  * Author: Joel Huffman
- * Last updated: 5/30/2019
+ * Last updated: 6/2/2019
  * Sources:
  * https://github.com/Huffmajo/CS344/tree/master/program4 *private repo, access available upon request
  * https://github.com/Huffmajo/CS372/tree/master/project1 *private repo, access available upon request
@@ -31,13 +31,12 @@ void stderror(const char* string)
 
 /***********************************************************
  * Function: serverSetup(portNum)
- * Accepts an int. Sets up server at the given port number.
+ * Accepts an int. Connects at the given port number.
  * Returns int of server socket.
  ***********************************************************/
 int serverSetup(int portNum)
 {
-	int listenSocketFD, 
-	    optval;
+	int listenSocketFD, optval;
 	socklen_t sizeOfClientInfo;
 	struct sockaddr_in serverAddress; 
 
@@ -57,8 +56,8 @@ int serverSetup(int portNum)
 	}
 
 	// can re-use ports 
-//	optval = 1;
-//	setsockopt(listenSocketFD, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int));
+	optval = 1;
+	setsockopt(listenSocketFD, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int));
 
 	// Enable the socket to begin listening
 	if (bind(listenSocketFD, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to port
@@ -78,9 +77,10 @@ int serverSetup(int portNum)
  ***********************************************************/
 void receiveData(int socket, char* buffer)
 {
+	// clear out buffer before writing to it
 	memset(buffer, '\0', sizeof(buffer));
 
-	// read data from socket to buffer
+	// read data from socket into buffer
 	int charsRead;
 	charsRead = recv(socket, buffer, 50000, 0);
 
@@ -96,16 +96,16 @@ void receiveData(int socket, char* buffer)
  * Accepts an int and a string. Sends data in buffer to 
  * provided socket.
  ***********************************************************/
-void sendData(int socket, char* output)
+void sendData(int socket, char* buffer)
 {
-	int charsSent = send(socket, output, strlen(output), 0);
+	int charsSent = send(socket, buffer, strlen(buffer), 0);
 
 	if (charsSent < 0)
 	{
 		fprintf(stderr, "ERROR sending data on %d\n", socket);
 	}
 
-	printf("Sent %d\n", output);
+	printf("Sent %s\n", buffer);
 }
 
 /***********************************************************
@@ -115,6 +115,7 @@ void sendData(int socket, char* output)
  ***********************************************************/
 char* getDirListing(char* buffer)
 {
+	// clear buffer before writing to it
 	memset(buffer, '\0', sizeof(buffer));
 
 	struct dirent* dir;
@@ -163,6 +164,36 @@ void sendFile(int socket, char* filename)
 	fclose(fp);
 
 	sendData(socket, buffer);
+}
+
+/***********************************************************
+ * Function: parseMessage(socket, filename)
+ * Accepts a string message and several params used for 
+ * output. Splits message at delimiters to distinuguish info 
+ * from one another. Returns dataport number
+ ***********************************************************/
+int parseMessage(char* message, char* clientHost, char* command, char* filename)
+{
+	// separate data port number
+	char* token = strtok(message, "!");
+	int dataPort = atoi(token);
+
+	// separate client host name
+	token = strtok(NULL, "!");
+	strcpy(clientHost, token);	
+
+	// separate command
+	token = strtok(NULL, "!");
+	strcpy(command, token);	
+
+	// separate filename only if command is -g
+	if (strcmp(command, "-g") == 0)
+	{
+		token = strtok(NULL, "!");
+		strcpy(filename, token);	
+	}
+
+	return dataPort;
 }
 
 int main(int argc, char* argv[])
@@ -227,49 +258,24 @@ int main(int argc, char* argv[])
 		// child process
 		else if (pid == 0)
 		{
+			int dataPortNum;
+			char clientHost[50000];
+			char command[50000];
+			char filename[50000];
+
 			printf("In child process\n");
 
-			char garbage[] = "*********";
-
-			// get TCP data portNum
+			// get grouped client data
 			receiveData(establishedConnectionFD, buffer);
-			int dataPortNum = atoi(buffer);
 
-			// needed for pythons stream-style sending
-			sendData(establishedConnectionFD, garbage);
-
-			// get client host
-			receiveData(establishedConnectionFD, buffer);
-			char* clientHost;
-			strcpy(clientHost, buffer);
-
-			// needed for pythons stream-style sending
-			sendData(establishedConnectionFD, garbage);
-
-			// get command from client
-			receiveData(establishedConnectionFD, buffer);
-			strcpy(command, buffer);
-
-			// needed for pythons stream-style sending
-			sendData(establishedConnectionFD, garbage);
-
-			// get filename from client
-			receiveData(establishedConnectionFD, buffer);
-			strcpy(filename, buffer);
+			// split up data at delimiters
+			dataPortNum = parseMessage(buffer, clientHost, command, filename);
 
 			// TEST PRINTS
 			printf("dataPort: %d\nclientHost: %s\ncommand: %s\nfilename: %s\n", dataPortNum, clientHost, command, filename);
-			// let user know if command is invalid
-			if (strcmp(command, "-l") != 0 && strcmp(command, "-g") != 0)
-			{
-				strcpy(buffer, "Invalid command");
-				sendData(establishedConnectionFD, buffer);
 
-				// needed for pythons stream-style sending
-				receiveData(establishedConnectionFD, buffer);
-			}
-
-			else
+			// check for command validity
+			if (strcmp(command, "-l") == 0 || strcmp(command, "-g") == 0)
 			{
 				// send valid command message
 				strcpy(buffer, "Valid command");
@@ -311,6 +317,13 @@ int main(int argc, char* argv[])
 				//close data connection
 				close(establishedDataConnectionFD);
 			}
+
+			// otherwise send invalid command message to client
+			else
+			{
+				strcpy(buffer, "Invalid command");
+				sendData(establishedConnectionFD, buffer);
+			}
 		}
 
 		// parent process
@@ -320,6 +333,6 @@ int main(int argc, char* argv[])
 		}
 
 		// close connection
-		close(establishedConnectionFD);
+		//close(establishedConnectionFD);
 	}
 }

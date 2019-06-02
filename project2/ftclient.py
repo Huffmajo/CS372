@@ -2,7 +2,7 @@
 ##########################################################
 # Program: ftclient.py
 # Author: Joel Huffman
-# Last updated: 5/30/2019
+# Last updated: 6/2/2019
 # Sources: https://media.oregonstate.edu/media/t/0_hh05nevl - Most of socket and connection setup
 # https://docs.python.org/release/2.6.5/library/internet.html
 # https://beej.us/guide/bgnet/html/single/bgnet.html
@@ -67,12 +67,11 @@ if __name__ == "__main__":
 		dataPortNum = int(sys.argv[5])
 		commandResponse = "Valid command"
 
-	
 	# otherwise tell user to it's an invalid command
 	else:
 		filename = ""
-		dataPortNum = ""
-		commandResponse = "Valid command"
+		dataPortNum = 0
+		commandResponse = "Invalid command"
 
 	# TEST PRINTS
 	print("Server host: %s" % serverHost)
@@ -80,48 +79,34 @@ if __name__ == "__main__":
 	print("Command: %s" % command)
 	print("Data port #: %s" % dataPortNum)
 	print("Filename: %s" % filename)
+	print("Command Response: %s" % commandResponse)
 
 	# connect to server
 	connectionSocket = setupClient(serverHost, serverPortNum);
 
-	# send data port number
-	send(connectionSocket, dataPortNum)
+	# condense info into a single delimited string
+	message = str(dataPortNum) + "!" + gethostname() + "!" + command + "!" + filename
 
-	# needed for pythons stream-style sending
-	garbage = receive(connectionSocket, 10)
+	# send condesnsed client info
+	send(connectionSocket, message)
 
-	# send client host
-	clientHost = gethostname()
-	send(connectionSocket, clientHost)
-
-	# needed for pythons stream-style sending
-	garbage = receive(connectionSocket, 10)
-
-	# send command
-	send(connectionSocket, command)
-
-	# needed for pythons stream-style sending
-	garbage = receive(connectionSocket, 10)
-
-	# send filename
-	send(connectionSocket, filename)
+	time.sleep(1)
 
 	# receive if server accepts command
-	commandResponse = receive(connectionSocket, 1000)
-
-	# needed for pythons stream-style sending
-	send (connectionSocket, garbage)
+	commandResponse = receive(connectionSocket, 50001)
 
 	# continue with function if command is deemed valid
 	if commandResponse == "Valid command":
 		time.sleep(.1)
 
 		# connect to server for data communication
-		dataSocket = setupClient(serverHost, dataPortNum);
+		dataSocket = setupClient(serverHost, dataPortNum)
+
+		print("Connecting @ %d" % dataPortNum)
 
 		# receive command response
 		# **NEED TO DO THIS OVER THE DATA CONNECTION**
-		response = receive(dataSocket, 50000)
+		response = receive(dataSocket, 50001)
 
 		if response == "File not found":
 			print("%s:%s says FILE NOT FOUND" % (serverHost, str(dataPortNum)))

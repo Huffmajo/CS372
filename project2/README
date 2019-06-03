@@ -1,0 +1,38 @@
+1. Ensure you have permissions to execute the program files:
+
+	chmod +x ftserver.c ftclient.py makefile
+
+2. Run the makefile and compile chatclient.c into something you can execute: 
+
+	make
+
+3. Spin up the server with whatever port number you'd like to test on:
+
+	ftserver [PORTNUM]
+
+   Example: 
+
+	ftserver 45600 
+
+
+4. Spin up the client with the server's hostname, control port, command, filename (if using command -g) and data port:
+	
+	python3 ftclient.py [SERVERHOSTNAME] [PORTNUM] [COMMAND] [FILENAME] [DATAPORTNUM]	*if using -g command
+				
+		-or-
+
+	python3 ftclient.py [SERVERHOSTNAME] [PORTNUM] [COMMAND] [DATAPORTNUM]			*if using -l command
+
+  Examples:
+
+	python3 ftclient.py flip1 45600 -l 45599
+
+	python3 ftclient.py flip1 45600 -l mytestfile.txt 45599
+
+NOTES:
+	- All testing occurred with server spun up on flip1 and client on flip2
+	- Client will disconnect after each request is completed.
+	- Server must receive a SIGINT (ctrl + c) to exit.	
+
+EXTRA CREDIT:
+	- Filetypes other than .txt can be used for file transfer

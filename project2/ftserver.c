@@ -127,7 +127,6 @@ char* getDirListing(char* buffer)
 			strcat(buffer, dir->d_name);
 			strcat(buffer, "\n");
 		}
-
 	}
 	closedir(d);
 }
@@ -161,7 +160,6 @@ void sendFile(int socket, char* filename, char* clientHost, int dataPortNum)
 	// otherwise read and send file contents
 	else
 	{
-//		fgets(buffer, sizeof(buffer), fp);
 /*
 		if (fseek(fp, 0L, SEEK_END) == 0)
 		{
@@ -206,6 +204,9 @@ void sendFile(int socket, char* filename, char* clientHost, int dataPortNum)
 		sendData(socket, buffer);
 	}
 	fclose(fp);
+
+	//close data connection
+	close(socket);
 }
 
 /***********************************************************
@@ -346,6 +347,8 @@ int main(int argc, char* argv[])
 
 					// send to client
 					sendData(establishedDataConnectionFD, buffer);
+
+					close(establishedDataConnectionFD);
 				}
 
 				// send file if properly requested
@@ -358,8 +361,6 @@ int main(int argc, char* argv[])
 					sendFile(establishedDataConnectionFD, filename, clientHost, dataPortNum); 
 				}
 			
-				//close data connection
-				close(establishedDataConnectionFD);
 			}
 
 			// otherwise send invalid command message to client

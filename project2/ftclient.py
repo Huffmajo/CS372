@@ -10,13 +10,15 @@
 # https://github.com/Huffmajo/CS372/tree/master/project1 *access to private repo is available upon request
 # https://www.geeksforgeeks.org/python-string-split/
 # https://www.tutorialspoint.com/python3/python_files_io.htm
+# https://stackoverflow.com/questions/2029103/correct-way-to-read-a-text-file-into-a-buffer-in-c
 ##########################################################
 
 from socket import *
 # import socket
 import sys
 import time
-# 
+
+# create and connect to socket
 def setupClient(host, portNum):
 	clientSocket = socket(AF_INET, SOCK_STREAM)
 	try:
@@ -29,10 +31,8 @@ def setupClient(host, portNum):
 # encode and send data
 def send(socket, msg):
 	msg = str(msg)
-#	msg = msg.encode('utf-8')
 	socket.send(msg.encode())
 	print("Sent %s" % msg)
-
 
 # receive and decode data
 def receive(socket, size):
@@ -69,19 +69,11 @@ if __name__ == "__main__":
 		dataPortNum = int(sys.argv[5])
 		commandResponse = "Valid command"
 
-	# otherwise tell user to it's an invalid command
+	# otherwise it's an invalid command
 	else:
 		filename = ""
 		dataPortNum = 0
 		commandResponse = "Invalid command"
-
-	# TEST PRINTS
-	print("Server host: %s" % serverHost)
-	print("Server port #: %s" % serverPortNum)
-	print("Command: %s" % command)
-	print("Data port #: %s" % dataPortNum)
-	print("Filename: %s" % filename)
-	print("Command Response: %s" % commandResponse)
 
 	# connect to server
 	connectionSocket = setupClient(serverHost, serverPortNum);
@@ -112,11 +104,14 @@ if __name__ == "__main__":
 
 		if response == "File not found":
 			print("%s:%s says FILE NOT FOUND" % (serverHost, str(dataPortNum)))
+			dataSocket.close()
 
 		elif command == "-l":
 
 			print("Receiving directory structure from %s:%s" % (serverHost, str(dataPortNum)))
 			print(response)
+			dataSocket.close()
+
 		elif command == "-g":
 
 			# if filename doesn't have an extension, append _copy to it's name
@@ -128,22 +123,34 @@ if __name__ == "__main__":
 				parts = filename.split('.', 1)
 				filenameCopy = parts[0] + "_copy." + parts[1]
 
-			# make copy of file with updated name
-			copiedFile = open(filenameCopy, "w")
+			# loop until valid choice is selected
+			choice = "X"
+			while choice != "Y" and choice != "N":
+
+				# let user choose to create new file or not
+				choice = input("File \"%s\" already exists. Save as \"%s\" Y/N?" % (filename, filenameCopy))
+				choice = choice.upper()
+
+			if choice == "Y": 
+				# make copy of file with updated name
+				copiedFile = open(filenameCopy, "w")
 			
-			# inject copied contents into new file
-			copiedFile.write(response)
+				# inject copied contents into new file
+				copiedFile.write(response)
 
-			# close new file
-			copiedFile.close()
+				# close new file
+				copiedFile.close()
 
-			print("File transfer complete")
+				print("File transfer complete")
+			
+			elif choice == "N":
+				print("File transfer cancelled")
 
-		dataSocket.close()
+			dataSocket.close()
 
 	# otherwise, close sockets
 	else:
 		print("Invalid command: %s. Valid commands are -l and -g." % command)
 
-	# close both connections
+	# close connection
 	connectionSocket.close()

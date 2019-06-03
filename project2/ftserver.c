@@ -133,37 +133,79 @@ char* getDirListing(char* buffer)
 }
 
 /***********************************************************
- * Function: sendFile(socket, filename)
- * Accepts an int and a string. Reads content of filename 
- * and sends those contents to client through provided 
- * socket. If file doesn't exist, "File not found" is sent to
- * client.
+ * Function: sendFile(socket, filename, clientHost, dataPortNum)
+ * Accepts an int, 2 strings and another int. Reads content 
+ * of filename and sends those contents to client through the 
+ * provided socket. If the file doesn't exist, "File not found" 
+ * is sent to the client.
  ***********************************************************/
-void sendFile(int socket, char* filename)
+void sendFile(int socket, char* filename, char* clientHost, int dataPortNum)
 {
-	char buffer[150000];
+	char buffer[50001];
 	memset(buffer, '\0', sizeof(buffer));
 
-	FILE* fp;
-
 	// attempt to open file 
-	fp = fopen(filename, "r");
+	FILE* fp = fopen(filename, "r");
 
 	// let client know if file does not exist
 	if (fp == NULL)
 	{
-		strcpy(buffer, "File not found\n");
+		strcpy(buffer, "File not found");
+
+		// print what is happening
+		printf("File not found. Sending error message to %s:%d\n", clientHost, dataPortNum);
+
+		sendData(socket, buffer);
 	}
 
 	// otherwise read and send file contents
 	else
 	{
-		fgets(buffer, sizeof(buffer), fp);
+//		fgets(buffer, sizeof(buffer), fp);
+/*
+		if (fseek(fp, 0L, SEEK_END) == 0)
+		{
+			long bufsize = ftell(fp);
+			if (bufsize == -1)
+			{
+				stderror("ERROR reading file");
+			}
+
+			source = malloc(sizeof(char)) * (bufsize + 1));
+
+			if (fseek(fp, 0L, SEEK_SET) != 0)
+			{
+				stderror("ERROR reading file");
+			}
+
+			size_t newLen = fread(source, sizeof(char), bufsize, fp);
+
+			if (ferror(fp) != 0)
+			{
+				fprintf(stderr, "ERROR reading file");
+			}
+
+			else
+			{
+				source[newLen++] = '\0';
+			}
+*/
+		size_t newLen = fread(buffer, sizeof(char), 50001, fp);
+		if ( ferror( fp ) != 0 )
+		{
+			fputs("Error reading file", stderr);
+    		} 
+		else 
+		{
+			buffer[newLen++] = '\0'; /* Just to be safe. */
+		}
+
+		// print what is happening
+		printf("Sending \"%s\" to %s:%d\n", filename, clientHost, dataPortNum);
+
+		sendData(socket, buffer);
 	}
-
 	fclose(fp);
-
-	sendData(socket, buffer);
 }
 
 /***********************************************************
@@ -293,8 +335,14 @@ int main(int argc, char* argv[])
 				// send directory listing if properly requested
 				if (strcmp(command, "-l") == 0)
 				{
+					// print what is happening
+					printf("List directory requested on port %d.\n", dataPortNum);
+
 					// get current directory listing
 					getDirListing(buffer);
+
+					// print what is happening
+					printf("Sending directory contents to %s: %d\n", clientHost, dataPortNum);
 
 					// send to client
 					sendData(establishedDataConnectionFD, buffer);
@@ -303,8 +351,11 @@ int main(int argc, char* argv[])
 				// send file if properly requested
 				else if (strcmp(command, "-g") == 0)
 				{
+					// print what is happening
+					printf("File \"%s\" requested on port %d.\n", filename, dataPortNum);
+
 					// send file contents or message if file is not found
-					sendFile(establishedDataConnectionFD, filename); 
+					sendFile(establishedDataConnectionFD, filename, clientHost, dataPortNum); 
 				}
 			
 				//close data connection
@@ -326,6 +377,6 @@ int main(int argc, char* argv[])
 		}
 
 		// close connection
-		//close(establishedConnectionFD);
+		close(establishedConnectionFD);
 	}
 }

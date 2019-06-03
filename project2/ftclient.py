@@ -8,6 +8,8 @@
 # https://beej.us/guide/bgnet/html/single/bgnet.html
 # https://www.tutorialspoint.com/python3/python_networking.htm - Great for translating to Python3
 # https://github.com/Huffmajo/CS372/tree/master/project1 *access to private repo is available upon request
+# https://www.geeksforgeeks.org/python-string-split/
+# https://www.tutorialspoint.com/python3/python_files_io.htm
 ##########################################################
 
 from socket import *
@@ -110,11 +112,33 @@ if __name__ == "__main__":
 
 		if response == "File not found":
 			print("%s:%s says FILE NOT FOUND" % (serverHost, str(dataPortNum)))
+
 		elif command == "-l":
+
 			print("Receiving directory structure from %s:%s" % (serverHost, str(dataPortNum)))
 			print(response)
 		elif command == "-g":
+
+			# if filename doesn't have an extension, append _copy to it's name
+			if filename.find(".") == -1:
+				filenameCopy = filename + "_copy"
+
+			# otherwise, add _copy to filename before extension
+			else:
+				parts = filename.split('.', 1)
+				filenameCopy = parts[0] + "_copy." + parts[1]
+
+			# make copy of file with updated name
+			copiedFile = open(filenameCopy, "w")
+			
+			# inject copied contents into new file
+			copiedFile.write(response)
+
+			# close new file
+			copiedFile.close()
+
 			print("File transfer complete")
+
 		dataSocket.close()
 
 	# otherwise, close sockets

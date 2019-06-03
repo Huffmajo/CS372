@@ -6,6 +6,7 @@
  * https://github.com/Huffmajo/CS344/tree/master/program4 *private repo, access available upon request
  * https://github.com/Huffmajo/CS372/tree/master/project1 *private repo, access available upon request
  * https://stackoverflow.com/questions/4204666/how-to-list-files-in-a-directory-in-a-c-program
+ * https://stackoverflow.com/questions/2029103/correct-way-to-read-a-text-file-into-a-buffer-in-c
  *********************************************************/
 
 #include <stdio.h>
@@ -17,6 +18,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <dirent.h>
+
+#define BUFFERSIZE 150000
 
 /***********************************************************
  * Function: stderror(err)
@@ -72,8 +75,8 @@ int serverSetup(int portNum)
 
 /***********************************************************
  * Function: receiveData(socket, buffer)
- * Accepts an int as a socket. Reads sent data from socket 
- * to a buffer. Then returns that buffer.
+ * Accepts an int as a socket and char* as a string. Reads 
+ * sent data from socket to the buffer. 
  ***********************************************************/
 void receiveData(int socket, char* buffer)
 {
@@ -82,13 +85,12 @@ void receiveData(int socket, char* buffer)
 
 	// read data from socket into buffer
 	int charsRead;
-	charsRead = recv(socket, buffer, 50000, 0);
+	charsRead = recv(socket, buffer, BUFFERSIZE, 0);
 
 	if (charsRead < 0)
 	{
 		fprintf(stderr, "ERROR receiving data on %d\n", socket);
 	}
-	printf("Received %s\n", buffer);
 }
 
 /***********************************************************
@@ -104,8 +106,6 @@ void sendData(int socket, char* buffer)
 	{
 		fprintf(stderr, "ERROR sending data on %d\n", socket);
 	}
-
-	printf("Sent %s\n", buffer);
 }
 
 /***********************************************************
@@ -140,7 +140,7 @@ char* getDirListing(char* buffer)
  ***********************************************************/
 void sendFile(int socket, char* filename, char* clientHost, int dataPortNum)
 {
-	char buffer[50001];
+	char buffer[BUFFERSIZE + 1];
 	memset(buffer, '\0', sizeof(buffer));
 
 	// attempt to open file 
@@ -160,35 +160,7 @@ void sendFile(int socket, char* filename, char* clientHost, int dataPortNum)
 	// otherwise read and send file contents
 	else
 	{
-/*
-		if (fseek(fp, 0L, SEEK_END) == 0)
-		{
-			long bufsize = ftell(fp);
-			if (bufsize == -1)
-			{
-				stderror("ERROR reading file");
-			}
-
-			source = malloc(sizeof(char)) * (bufsize + 1));
-
-			if (fseek(fp, 0L, SEEK_SET) != 0)
-			{
-				stderror("ERROR reading file");
-			}
-
-			size_t newLen = fread(source, sizeof(char), bufsize, fp);
-
-			if (ferror(fp) != 0)
-			{
-				fprintf(stderr, "ERROR reading file");
-			}
-
-			else
-			{
-				source[newLen++] = '\0';
-			}
-*/
-		size_t newLen = fread(buffer, sizeof(char), 50001, fp);
+		size_t newLen = fread(buffer, sizeof(char), BUFFERSIZE, fp);
 		if ( ferror( fp ) != 0 )
 		{
 			fputs("Error reading file", stderr);
@@ -210,7 +182,7 @@ void sendFile(int socket, char* filename, char* clientHost, int dataPortNum)
 }
 
 /***********************************************************
- * Function: parseMessage(socket, filename)
+ * Function: parseMessage(message, clientHost, command, filename)
  * Accepts a string message and several params used for 
  * output. Splits message at delimiters to distinuguish info 
  * from one another. Returns dataport number
@@ -239,6 +211,78 @@ int parseMessage(char* message, char* clientHost, char* command, char* filename)
 	return dataPort;
 }
 
+/***********************************************************
+ * Function: dataResponse(command, clientHost, filename, dataPortNum, clientSocket, establishedConnectionFD)
+ * Accepts 3 strings and 3 ints. Creates and connects to the 
+ * TCP data socket if needed. Then sends either the directory
+ * listing or file contents to the client.
+ ***********************************************************/
+void dataResponse(char* command, char* clientHost, char* filename, int dataPortNum, int clientSocket, int establishedConnectionFD)
+{
+	char buffer[BUFFERSIZE];
+
+	// check for command validity
+	if (strcmp(command, "-l") == 0 || strcmp(command, "-g") == 0)
+	{
+		// send valid command message
+		strcpy(buffer, "Valid command");
+		sendData(establishedConnectionFD, buffer);				
+
+		// form TCP data connection with client	
+		clientSocket = serverSetup(dataPortNum);
+		int establishedDataConnectionFD = accept(clientSocket, NULL, NULL);
+
+		if (establishedDataConnectionFD < 0)
+		{
+			// print error, but don't exit
+			fprintf(stderr, "ERROR on data accept\n");
+		}
+
+		// print confirmation of server setup
+		printf("Connection from %s\n", clientHost);
+
+		// send directory listing if properly requested
+		if (strcmp(command, "-l") == 0)
+		{
+			// print what is happening
+			printf("List directory requested on port %d.\n", dataPortNum);
+
+			// get current directory listing
+			getDirListing(buffer);
+
+			// print what is happening
+			printf("Sending directory contents to %s:%d\n", clientHost, dataPortNum);
+
+			// send to client
+			sendData(establishedDataConnectionFD, buffer);
+
+			close(establishedDataConnectionFD);
+		}
+
+		// send file if properly requested
+		else if (strcmp(command, "-g") == 0)
+		{
+			// print what is happening
+			printf("File \"%s\" requested on port %d.\n", filename, dataPortNum);
+
+			// send file contents or message if file is not found
+			sendFile(establishedDataConnectionFD, filename, clientHost, dataPortNum);
+ 
+			close(establishedDataConnectionFD);
+		}
+	}
+
+	// otherwise send invalid command message to client
+	else
+	{
+		strcpy(buffer, "Invalid command");
+		sendData(establishedConnectionFD, buffer);
+	}
+
+	close(establishedConnectionFD);
+}
+
+
 int main(int argc, char* argv[])
 {
 	int serverSocket;
@@ -247,8 +291,7 @@ int main(int argc, char* argv[])
 	pid_t pid;
 	sockaddr_in clientAddress;
 	socklen_t sizeOfClientInfo;
-	int bufferSize = 50000;
-	char buffer[bufferSize];
+	char buffer[BUFFERSIZE];
 	char* command;
 	char* filename;
 
@@ -295,11 +338,9 @@ int main(int argc, char* argv[])
 		else if (pid == 0)
 		{
 			int dataPortNum;
-			char clientHost[50000];
-			char command[50000];
-			char filename[50000];
-
-			printf("In child process\n");
+			char clientHost[BUFFERSIZE];
+			char command[BUFFERSIZE];
+			char filename[BUFFERSIZE];
 
 			// get grouped client data
 			receiveData(establishedConnectionFD, buffer);
@@ -310,71 +351,8 @@ int main(int argc, char* argv[])
 			// print client's hostname
 			printf("Connection from %s\n", clientHost);
 
-			// TEST PRINTS
-			printf("dataPort: %d\nclientHost: %s\ncommand: %s\nfilename: %s\n", dataPortNum, clientHost, command, filename);
-
-			// check for command validity
-			if (strcmp(command, "-l") == 0 || strcmp(command, "-g") == 0)
-			{
-				// send valid command message
-				strcpy(buffer, "Valid command");
-				sendData(establishedConnectionFD, buffer);				
-
-				// form TCP data connection with client	
-				clientSocket = serverSetup(dataPortNum);
-				int establishedDataConnectionFD = accept(clientSocket, NULL, NULL);
-
-				if (establishedDataConnectionFD < 0)
-				{
-					// print error, but don't exit
-					fprintf(stderr, "ERROR on data accept\n");
-				}
-
-				// print confirmation of server setup
-				printf("Connection from %s\n", clientHost);
-
-				// send directory listing if properly requested
-				if (strcmp(command, "-l") == 0)
-				{
-					// print what is happening
-					printf("List directory requested on port %d.\n", dataPortNum);
-
-					// get current directory listing
-					getDirListing(buffer);
-
-					// print what is happening
-					printf("Sending directory contents to %s: %d\n", clientHost, dataPortNum);
-
-					// send to client
-					sendData(establishedDataConnectionFD, buffer);
-
-					close(establishedDataConnectionFD);
-				}
-
-				// send file if properly requested
-				else if (strcmp(command, "-g") == 0)
-				{
-					// print what is happening
-					printf("File \"%s\" requested on port %d.\n", filename, dataPortNum);
-
-					// send file contents or message if file is not found
-					sendFile(establishedDataConnectionFD, filename, clientHost, dataPortNum); 
-				}
-			
-			}
-
-			// otherwise send invalid command message to client
-			else
-			{
-				strcpy(buffer, "Invalid command");
-				sendData(establishedConnectionFD, buffer);
-			}
-		}
-
-		// parent process
-		else 
-		{
-			// nothing needed here
+			// handle client request
+			dataResponse(command, clientHost, filename, dataPortNum, clientSocket, establishedConnectionFD);
 		}
 
 		// close connection

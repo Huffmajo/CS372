@@ -27,7 +27,7 @@
 
 	python3 ftclient.py flip1 45600 -l 45599
 
-	python3 ftclient.py flip1 45600 -l mytestfile.txt 45599
+	python3 ftclient.py flip1 45600 -g mytestfile.txt 45599
 
 NOTES:
 	- All testing occurred with server spun up on flip1 and client on flip2
@@ -35,4 +35,8 @@ NOTES:
 	- Server must receive a SIGINT (ctrl + c) to exit.	
 
 EXTRA CREDIT:
-	- Filetypes other than .txt can be used for file transfer
+	- Binary files can also be transfered via -g command. Be sure to include .bin file extension in filename.
+
+  Example:	
+	
+	python3 ftclient.py flip1 45600 -g bios.bin 45599
